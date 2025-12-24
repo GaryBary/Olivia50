@@ -4,7 +4,7 @@ import { MegaShow } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const CACHE_KEY = 'olivia_bday_data_v11';
+const CACHE_KEY = 'olivia_bday_data_v12';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 const MEGA_SCHEMA = {
@@ -57,9 +57,9 @@ const MEGA_SCHEMA = {
 const SYSTEM_INSTRUCTION = `
 You are a world-class luxury concierge for Olivia's 50th Birthday in Melbourne 2026.
 
-MANDATORY DATA REQUIREMENT: 
-You MUST provide 4-6 unique high-end restaurants for EVERY cuisine category for EVERY hotel. 
-Providing only 1 or 2 options is a FAILURE. Truncating the list is a FAILURE.
+CRITICAL REQUIREMENT: 
+You MUST provide a MINIMUM of 4-6 unique high-end restaurants for EVERY cuisine category for EVERY hotel. 
+If you return only 1 or 2 restaurants for a category, you have failed the mission.
 
 Show Data (Fixed):
 1. "My Brilliant Career": Southbank Theatre. Feb 14 - March 21, 2026.
@@ -68,48 +68,32 @@ Show Data (Fixed):
 4. "The Vaudeville Revue": Speakeasy Theatre. Nov 5 - Nov 28, 2026.
 5. "Piper's Playhouse": Crown Casino. Jan 15 – Mar 22, 2026.
 
-Elite Hotel Selection:
-For each show, pick 2 nearby 5-star hotels (Crown Towers, Langham, Ritz-Carlton, W, Park Hyatt, Grand Hyatt).
-
 STRICT Restaurant Selection Strategy:
-For EVERY hotel, you MUST provide a collection of 4-6 restaurants for each of these 9 cuisines:
+For EVERY hotel, you MUST provide 4-6 restaurants for each of these 9 cuisines:
 
 1. Modern Australian: 
-   - ALWAYS include: Farmer’s Daughters, Henry and The Fox, Cumulus Inc, Gimlet.
-   - PLUS: 2 more high-end options found via search near the hotel.
-
+   - [Farmer’s Daughters, Henry and The Fox, Cumulus Inc, Gimlet] + search for 2 more unique elite options.
 2. Mexican: 
-   - ALWAYS include: Mamasita, Hecho en Mexico (CBD).
-   - PLUS: 2-3 more high-end options found via search (e.g., Mesa Verde, Bodega Underground).
-
+   - [Mamasita, Hecho en Mexico (CBD), Mesa Verde, Bodega Underground] + 1-2 more.
 3. Italian: 
-   - ALWAYS include: Tipo 00, La Cucina Melbourne.
-   - PLUS: 2-3 more high-end options (e.g., Grossi Florentino, Cecconi's, Rosetta).
-
+   - [Tipo 00, La Cucina Melbourne, Grossi Florentino, Cecconi's, Rosetta] + 1-2 more.
 4. French: 
-   - ALWAYS include: France-Soir, Philippe, Roule Galette.
-   - PLUS: 2 more high-end options (e.g., Bistrot d'Orsay, Smith St Bistro).
-
+   - [France-Soir, Philippe, Roule Galette, Bistrot d'Orsay, Smith St Bistro] + 1-2 more.
 5. Modern Greek: 
-   - Search for and include at least 4 options: Aegli, Yassas, Stalactites, and Hellenic Republic.
-
+   - Include at least 4 options: Aegli, Yassas, Stalactites, and Hellenic Republic.
 6. Middle Eastern: 
-   - Search for and include at least 4 options: Maha, Byblos, Souk, Miznon.
-
+   - Include at least 4 options: Maha, Byblos, Souk, Miznon.
 7. Spanish: 
-   - Search for and include at least 4 options: Asado, El Rincón, MoVida, Bomba, Bar Lourinhã.
-
+   - Include at least 4 options: Asado, El Rincón, MoVida, Bomba, Bar Lourinhã.
 8. Contemporary Japanese: 
-   - Search for and include at least 4 options: Nobu, Kisumé, Minamishima, Robata, Kenzan.
-
+   - Include at least 4 options: Nobu, Kisumé, Minamishima, Robata, Kenzan.
 9. Innovative Cantonese: 
-   - Search for and include at least 4 options: Flower Drum, Ming Dining, Lee Ho Fook, Supernormal.
+   - Include at least 4 options: Flower Drum, Ming Dining, Lee Ho Fook, Supernormal.
 
-Quality Checks:
-- Use Google Search to find 'Signature Dishes' and 'Vibe summaries'.
-- Proximity is key. All selections must be elite, 5-star/high-end quality.
-- IDs must be unique.
-- Response MUST be complete JSON. No placeholders.
+Requirements:
+- Each restaurant MUST have a unique 'Signature Dish' and a 1-sentence 'Vibe' summary.
+- All selections must be within 15 mins of the hotel.
+- No placeholders. Return the full, complete JSON for 5 shows, 2 hotels each, and all 9 cuisines with multiple restaurants per cuisine.
 `;
 
 const PIPER_IMAGE_URL = "https://imagedelivery.net/9sCnq8jQj99s25814-TawYc_1Dkw/0018-19401441000/public";
@@ -127,14 +111,13 @@ export async function fetchMegaItineraryData(): Promise<MegaShow[]> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: "Generate the complete Melbourne 2026 celebration JSON. DO NOT TRUNCATE. For every single hotel, ensure EVERY one of the 9 cuisines has at least 4-6 restaurant options. Follow the 'Verified Favorites' lists exactly for the first 4 categories and search for the rest. This is a 50th birthday - everything must be impeccable.",
+      contents: "Generate the complete Melbourne 2026 celebration JSON. For every hotel, strictly follow the lists provided and search for additional options so each of the 9 cuisines has 4-6 restaurants. Do NOT truncate or stop early. This is a milestone celebration and requires a deep list of choices.",
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: MEGA_SCHEMA,
-        // Increased thinking budget to allow for more complex data assembly
-        thinkingConfig: { thinkingBudget: 4000 },
+        thinkingConfig: { thinkingBudget: 8000 },
       },
     });
 
