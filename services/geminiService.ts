@@ -4,7 +4,7 @@ import { MegaShow } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const CACHE_KEY = 'olivia_bday_data_v12';
+const CACHE_KEY = 'olivia_bday_data_v13';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 const MEGA_SCHEMA = {
@@ -57,43 +57,33 @@ const MEGA_SCHEMA = {
 const SYSTEM_INSTRUCTION = `
 You are a world-class luxury concierge for Olivia's 50th Birthday in Melbourne 2026.
 
-CRITICAL REQUIREMENT: 
-You MUST provide a MINIMUM of 4-6 unique high-end restaurants for EVERY cuisine category for EVERY hotel. 
-If you return only 1 or 2 restaurants for a category, you have failed the mission.
+CRITICAL FAILURE CONDITION: 
+If any cuisine category contains fewer than 4 unique restaurant options, the mission is a failure. 
+You MUST provide a MINIMUM of 4-6 unique high-end restaurants for EVERY of the 9 cuisine categories for EVERY hotel.
 
-Show Data (Fixed):
+Show Data (Strictly use these 5):
 1. "My Brilliant Career": Southbank Theatre. Feb 14 - March 21, 2026.
 2. "Heathers The Musical": Arts Centre Melbourne. June 12 - July 18, 2026.
 3. "The Pirates of Penzance": Palais Theatre. Oct 10 - Oct 31, 2026.
 4. "The Vaudeville Revue": Speakeasy Theatre. Nov 5 - Nov 28, 2026.
 5. "Piper's Playhouse": Crown Casino. Jan 15 – Mar 22, 2026.
 
-STRICT Restaurant Selection Strategy:
-For EVERY hotel, you MUST provide 4-6 restaurants for each of these 9 cuisines:
+Cuisine Strategy - MUST PROVIDE 4-6 PER CATEGORY:
+1. Modern Australian: [Farmer’s Daughters, Henry and The Fox, Cumulus Inc, Gimlet] + 2 more unique elite options nearby.
+2. Mexican: [Mamasita, Hecho en Mexico (CBD), Mesa Verde, Bodega Underground, Hotel Jesus].
+3. Italian: [Tipo 00, La Cucina Melbourne, Grossi Florentino, Cecconi's, Rosetta, Marameo].
+4. French: [France-Soir, Philippe, Roule Galette, Bistrot d'Orsay, Smith St Bistro, Entrecôte].
+5. Modern Greek: Search for at least 4-5 options (e.g., Aegli, Yassas, Stalactites, Hellenic Republic).
+6. Middle Eastern: Search for at least 4-5 options (e.g., Maha, Byblos, Souk, Miznon, Téta Mona).
+7. Spanish: Search for at least 4-5 options (e.g., Asado, El Rincón, MoVida, Bomba, Bar Lourinhã).
+8. Contemporary Japanese: Search for at least 4-5 options (e.g., Nobu, Kisumé, Minamishima, Robata, Kenzan).
+9. Innovative Cantonese: Search for at least 4-5 options (e.g., Flower Drum, Ming Dining, Lee Ho Fook, Supernormal).
 
-1. Modern Australian: 
-   - [Farmer’s Daughters, Henry and The Fox, Cumulus Inc, Gimlet] + search for 2 more unique elite options.
-2. Mexican: 
-   - [Mamasita, Hecho en Mexico (CBD), Mesa Verde, Bodega Underground] + 1-2 more.
-3. Italian: 
-   - [Tipo 00, La Cucina Melbourne, Grossi Florentino, Cecconi's, Rosetta] + 1-2 more.
-4. French: 
-   - [France-Soir, Philippe, Roule Galette, Bistrot d'Orsay, Smith St Bistro] + 1-2 more.
-5. Modern Greek: 
-   - Include at least 4 options: Aegli, Yassas, Stalactites, and Hellenic Republic.
-6. Middle Eastern: 
-   - Include at least 4 options: Maha, Byblos, Souk, Miznon.
-7. Spanish: 
-   - Include at least 4 options: Asado, El Rincón, MoVida, Bomba, Bar Lourinhã.
-8. Contemporary Japanese: 
-   - Include at least 4 options: Nobu, Kisumé, Minamishima, Robata, Kenzan.
-9. Innovative Cantonese: 
-   - Include at least 4 options: Flower Drum, Ming Dining, Lee Ho Fook, Supernormal.
-
-Requirements:
-- Each restaurant MUST have a unique 'Signature Dish' and a 1-sentence 'Vibe' summary.
-- All selections must be within 15 mins of the hotel.
-- No placeholders. Return the full, complete JSON for 5 shows, 2 hotels each, and all 9 cuisines with multiple restaurants per cuisine.
+Quality Standards:
+- Use Google Search to find current 'Signature Dishes' and 'Vibe summaries'.
+- All selections must be 5-star quality and within 15 mins of the hotel.
+- No placeholders like "TBD". Provide specific, real restaurants.
+- Output ONLY valid JSON matching the schema.
 `;
 
 const PIPER_IMAGE_URL = "https://imagedelivery.net/9sCnq8jQj99s25814-TawYc_1Dkw/0018-19401441000/public";
@@ -111,13 +101,13 @@ export async function fetchMegaItineraryData(): Promise<MegaShow[]> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: "Generate the complete Melbourne 2026 celebration JSON. For every hotel, strictly follow the lists provided and search for additional options so each of the 9 cuisines has 4-6 restaurants. Do NOT truncate or stop early. This is a milestone celebration and requires a deep list of choices.",
+      contents: "Generate the complete Melbourne 2026 Jubilee celebration JSON. For every hotel, strictly follow the guidelines to provide 4-6 restaurant options per cuisine. Do NOT truncate. This must be a comprehensive collection for Olivia's 50th birthday.",
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: MEGA_SCHEMA,
-        thinkingConfig: { thinkingBudget: 8000 },
+        thinkingConfig: { thinkingBudget: 12000 },
       },
     });
 
@@ -125,17 +115,12 @@ export async function fetchMegaItineraryData(): Promise<MegaShow[]> {
     
     let data = rawData.map((show: any) => {
       let showImg = LUXURY_THEATRE_PLACEHOLDER;
-      if (show.name.toLowerCase().includes("piper")) {
-        showImg = PIPER_IMAGE_URL;
-      } else if (show.name.toLowerCase().includes("heathers")) {
-        showImg = "https://images.unsplash.com/photo-1514306191717-452ec28c7814?auto=format&fit=crop&q=80&w=800";
-      } else if (show.name.toLowerCase().includes("pirates")) {
-        showImg = "https://images.unsplash.com/photo-1533923156502-be31530547c4?auto=format&fit=crop&q=80&w=800";
-      } else if (show.name.toLowerCase().includes("brilliant")) {
-        showImg = "https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&q=80&w=800";
-      } else if (show.name.toLowerCase().includes("vaudeville")) {
-        showImg = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800";
-      }
+      const lowerName = show.name.toLowerCase();
+      if (lowerName.includes("piper")) showImg = PIPER_IMAGE_URL;
+      else if (lowerName.includes("heathers")) showImg = "https://images.unsplash.com/photo-1514306191717-452ec28c7814?auto=format&fit=crop&q=80&w=800";
+      else if (lowerName.includes("pirates")) showImg = "https://images.unsplash.com/photo-1533923156502-be31530547c4?auto=format&fit=crop&q=80&w=800";
+      else if (lowerName.includes("brilliant")) showImg = "https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&q=80&w=800";
+      else if (lowerName.includes("vaudeville")) showImg = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=800";
 
       return {
         ...show,
